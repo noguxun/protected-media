@@ -1,0 +1,16 @@
+[package]
+name = "compute-starter-kit-rust-default"
+version = "0.1.0"
+authors = []
+edition = "2018"
+
+[profile.release]
+debug = true
+
+[dependencies]
+anyhow = "^1.0" 
+base64 = "^0.13"
+chrono = "^0.4"
+fastly = "^0.6.0"
+hmac-sha256 = "^0.1"
+log-fastly = "0.1.4"
