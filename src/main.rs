@@ -57,17 +57,37 @@ fn main(mut req: Request) -> Result<Response, Error> {
                 .get_client_ip_addr()
                 .ok_or_else(|| anyhow!("client ip error"))?
                 .to_string();
-            let page_body = generate_home_page(&ip)?;
+            let page_body = sign_page(&ip, include_str!("index.html"));
 
             Ok(Response::from_status(StatusCode::OK)
                 .with_content_type(mime::TEXT_HTML_UTF_8)
                 .with_body(page_body))
         }
 
+        path if path.starts_with("/tela") => {
+            let ip = req
+                .get_client_ip_addr()
+                .ok_or_else(|| anyhow!("client ip error"))?
+                .to_string();
+
+            req.set_path("/demo/protected-media/index.html");
+
+            let resp = req.send(BACKEND_NAME)?;
+
+            let body = resp.into_body_str();
+
+            let body_signed = sign_page(&ip, &body);
+
+            Ok(Response::from_status(StatusCode::OK)
+                .with_content_type(mime::TEXT_HTML_UTF_8)
+                .with_body(body_signed))
+        }
+
         // If request is to a path starting with `/other/`...
         path if path.starts_with("/img/") => {
-            if auth_check(&req).is_err() {
-                Ok(Response::from_status(StatusCode::FORBIDDEN).with_body_str("Not authorized\n"))
+            if let Err(e) = auth_check(&req) {
+                Ok(Response::from_status(StatusCode::FORBIDDEN)
+                    .with_body_str(&format!("Auth failed: {}", e)))
             } else {
                 Ok(req.send(BACKEND_NAME)?)
             }
@@ -83,6 +103,11 @@ fn auth_check(req: &Request) -> Result<()> {
 
     let timestamp = params.get("t").ok_or_else(|| anyhow!("No timestamp"))?;
     let signature = params.get("sig").ok_or_else(|| anyhow!("No signature"))?;
+
+    let now = Utc::now().timestamp();
+    if now > timestamp.parse::<i64>()? + 10 {
+        return Err(anyhow!("expired"));
+    }
 
     let ip = req
         .get_client_ip_addr()
@@ -107,16 +132,14 @@ fn get_signature(timestamp: &str, ip: &str) -> String {
     base64::encode_config(signature_binary, base64::URL_SAFE_NO_PAD)
 }
 
-fn generate_home_page(ip: &str) -> Result<String> {
+fn sign_page(ip: &str, body: &str) -> String {
     let timestamp = format!("{}", Utc::now().timestamp());
 
     let signature = get_signature(&timestamp, ip);
 
     let qs_signature = format!(".jpeg?t={}&sig={}", timestamp, signature);
 
-    let home_page = include_str!("index.html").replace(".jpeg", &qs_signature);
-
-    Ok(home_page)
+    body.replace(".jpeg", &qs_signature)
 }
 
 #[cfg(test)]
@@ -124,6 +147,6 @@ mod tests {
     use super::*;
     #[test]
     fn test1() {
-        println!("{}", generate_home_page("127.0.0.1").unwrap());
+        println!("{}", sign_page("127.0.0.1", include_str!("index.html")));
     }
 }

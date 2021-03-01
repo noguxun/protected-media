@@ -1,4 +1,4 @@
-version = 2
+version = 5
 name = "protected_media"
 description = "Get to know the Fastly Compute@Edge environment with a basic starter kit that demonstrates routing, simple synthetic responses and overriding caching rules."
 authors = ["xgu+ecp@fastly.com"]
