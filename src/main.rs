@@ -40,7 +40,6 @@ fn main(mut req: Request) -> Result<Response, Error> {
 
     // Pattern match on the path.
     match req.get_path() {
-        // If request is to the `/` path, send a default response.
         "/" => {
             let ip = req
                 .get_client_ip_addr()
@@ -72,7 +71,6 @@ fn main(mut req: Request) -> Result<Response, Error> {
                 .with_body(body_signed))
         }
 
-        // If request is to a path starting with `/other/`...
         path if path.starts_with("/img/") => {
             if let Err(e) = auth_check(&req) {
                 Ok(Response::from_status(StatusCode::FORBIDDEN)
@@ -82,7 +80,6 @@ fn main(mut req: Request) -> Result<Response, Error> {
             }
         }
 
-        // Catch all other requests and return a 404.
         _ => Ok(req.send(BACKEND_NAME)?),
     }
 }
